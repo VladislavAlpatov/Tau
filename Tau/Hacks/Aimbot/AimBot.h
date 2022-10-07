@@ -10,6 +10,7 @@ namespace Hacks
 		CAimBot(SSDK::CUserCmd* pUsrCmd);
 		virtual void Work();
 		static ImVec3                    CalcAimViewAngles(const SSDK::CBaseEntity* pEntity);
+		static ImVec3 Predict(const SSDK::CBaseEntity* pEnt, float projSpeed);
 	private:
 		SSDK::CUserCmd* m_pCUsrCmd = nullptr;
 

@@ -1,4 +1,3 @@
-#pragma once
 #include "AimBot.h"
 #include <algorithm>
 #include "../../Utils/Math.h"
@@ -7,22 +6,19 @@
 
 using namespace Hacks;
 
-ImVec3 Predict(const SSDK::CBaseEntity* pEnt,float projSpeed)
+ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed)
 {
-	auto pLocalPlayer = SSDK::GetLocalPlayer();
-	ImVec3 vecOut;
-	float fTime = pEnt->DistTo(pLocalPlayer) / projSpeed;
+	projSpeed = 1980.f;
 
-	if (pEnt->m_fFlags == 769)
-	{
-		vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
-	}
-	else
-	{
-		vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
-		vecOut.z -= 800.f / 2.f * fTime * fTime;
-	}
+	const auto pLocalPlayer = SSDK::GetLocalPlayer();
+	const float fTime = pLocalPlayer->DistTo(pEnt) / projSpeed;
 
+	ImVec3 vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
+
+
+	if (pEnt->m_fFlags != 769)
+		vecOut.z -= 800.f * fTime * fTime / 2.f;
+	// vecOut.z += 800.f * fTime * fTime / 2.f;
 	return vecOut;
 }
 
@@ -36,18 +32,10 @@ void CAimBot::Work()
 {
 
 	SSDK::CBaseEntity* pEnt = GetClosestTargetByFov();
-
-
-	if (!pEnt)
-	{
-		return;
-	}
-
-	if (IfEntityInFov(pEnt))
-	{
+	if (pEnt)
 		AimPlain(pEnt);
-	}
-	
+	if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+		m_pCUsrCmd->m_iTickCount = 16777216;
 }
 void CAimBot::AimPlain(const SSDK::CBaseEntity* pEnt)
 {
@@ -55,7 +43,7 @@ void CAimBot::AimPlain(const SSDK::CBaseEntity* pEnt)
 
 	if (fabs(calcedAngles.x) <= 89.f and fabs(calcedAngles.y) <= 180.f)
 	{
-		m_pCUsrCmd->viewangles = calcedAngles;
+		m_pCUsrCmd->m_vecViewAngles = calcedAngles;
 	}
 }
 void CAimBot::AimSmooth(const SSDK::CBaseEntity* pEnt)
@@ -64,7 +52,7 @@ void CAimBot::AimSmooth(const SSDK::CBaseEntity* pEnt)
 
 	ImVec3 targetViewAngle = CalcAimViewAngles(pEnt);
 
-	ImVec3 currentAngle = m_pCUsrCmd->viewangles;
+	ImVec3 currentAngle = m_pCUsrCmd->m_vecViewAngles;
 
 	ImVec3 diff = targetViewAngle - currentAngle;
 
@@ -79,13 +67,13 @@ void CAimBot::AimSmooth(const SSDK::CBaseEntity* pEnt)
 	
 	if (fabs(angle.x) <= 89.f and fabs(angle.y) <= 180.f)
 	{
-		m_pCUsrCmd->viewangles = angle;
+		m_pCUsrCmd->m_vecViewAngles = angle;
 	}
 }
 bool CAimBot::IfEntityInFov(const SSDK::CBaseEntity* entity) const
 {
 
-	ImVec3  pLocalPlayerAngles   = m_pCUsrCmd->viewangles;
+	ImVec3  pLocalPlayerAngles   = m_pCUsrCmd->m_vecViewAngles;
 	ImVec3  targetAngles         = CalcAimViewAngles(entity);
 	ImVec3  deltaFov             = pLocalPlayerAngles - targetAngles;
 
@@ -95,7 +83,7 @@ SSDK::CBaseEntity* CAimBot::GetClosestTargetByDistance()
 {
 	std::vector<SSDK::CBaseEntity*> validEntities = GetValidEntities();
 	
-	if (validEntities.size() == 0)
+	if (validEntities.empty())
 		return NULL;
 	std::sort(validEntities.begin(), validEntities.end(),
 
@@ -120,8 +108,8 @@ SSDK::CBaseEntity* CAimBot::GetClosestTargetByFov()
 
 		[this](SSDK::CBaseEntity* pEntityFirst, SSDK::CBaseEntity* pEntitySecond)
 		{
-			ImVec3 diffFirstEntity = (CalcAimViewAngles(pEntityFirst) - m_pCUsrCmd->viewangles).Abs();
-			ImVec3 diffSecondEntity = (CalcAimViewAngles(pEntitySecond) - m_pCUsrCmd->viewangles).Abs();
+			ImVec3 diffFirstEntity = (CalcAimViewAngles(pEntityFirst) - m_pCUsrCmd->m_vecViewAngles).Abs();
+			ImVec3 diffSecondEntity = (CalcAimViewAngles(pEntitySecond) - m_pCUsrCmd->m_vecViewAngles).Abs();
 
 			return diffFirstEntity.Length2D() < diffSecondEntity.Length2D();
 		});

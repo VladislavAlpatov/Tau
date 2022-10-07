@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "COverlay.h"
+﻿#include "COverlay.h"
 
 #include "../imgui/misc/freetype/imgui_freetype.h"
 #include "../imgui/imgui_impl_win32.h"
@@ -10,6 +9,7 @@
 #include "../SSDK/SSDK.h"
 #include <fmt/format.h>
 #include "../imgui/imgui_internal.h"
+#include  "../Hacks/Aimbot/AimBot.h"
 
 
 COverlay::COverlay(LPDIRECT3DDEVICE9 pDevice)
@@ -61,25 +61,6 @@ COverlay::COverlay(LPDIRECT3DDEVICE9 pDevice)
 }
 
 
-ImVec3 Predict2(const SSDK::CBaseEntity* pEnt, float projSpeed)
-{
-	auto pLocalPlayer = SSDK::GetLocalPlayer();
-	ImVec3 vecOut;
-	float fTime = pEnt->DistTo(pLocalPlayer) / projSpeed;
-
-	if (pEnt->m_fFlags == 769)
-	{
-		vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
-	}
-	else
-	{
-		vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
-		vecOut.z -= 800.f / 2.f * fTime * fTime;
-	}
-
-	return vecOut;
-}
-
 void COverlay::Render()
 {
 	static auto pEntList = SSDK::GetInterface<SSDK::IClientEntityList>("client.dll", "VClientEntityList003");
@@ -105,7 +86,7 @@ void COverlay::Render()
 			continue;
 
 		auto pos = Esp::CBaseEsp::WorldToScreen(pEnt->m_vecOrigin);
-		auto pred_pos = Esp::CBaseEsp::WorldToScreen(Predict2(pEnt, 1980));
+		auto pred_pos = Esp::CBaseEsp::WorldToScreen(Hacks::CAimBot::Predict(pEnt, 2000.f));
 
 		if (pos.z <= 0.f)
 			continue;

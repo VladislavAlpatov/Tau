@@ -11,6 +11,9 @@ DWORD WINAPI InitCheat(HMODULE hModule)
     FILE* f;
     freopen_s(&f, "CONOUT$", "w", stdout);
 
+    auto hwnd = FindWindowW(0, L"Team Fortress 2");
+    if (!DestroyWindow(hwnd))
+        printf("%d", GetLastError());
 
     while (!GetAsyncKeyState(VK_END))
     {
@@ -18,7 +21,7 @@ DWORD WINAPI InitCheat(HMODULE hModule)
     }
     
     Hooks::Detach();
-
+    Sleep(500);
     fclose(f);
     FreeConsole();
 

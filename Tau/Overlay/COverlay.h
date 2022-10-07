@@ -1,8 +1,5 @@
 #pragma once
 
-#include <Windows.h>
-#include <vector>
-
 #include <d3d9.h>
 #include "../imgui/imgui.h"
 
