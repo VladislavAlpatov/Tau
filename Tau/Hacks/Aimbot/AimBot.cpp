@@ -4,24 +4,50 @@
 #include "../../SSDK/IClientEntityList.h"
 
 
-using namespace Hacks;
-
-ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed)
+ImVec3 LinearPrediction(const SSDK::CBaseEntity* pEnt, float fTime)
 {
-	projSpeed = 1980.f;
 
 	const auto pLocalPlayer = SSDK::GetLocalPlayer();
-	const float fTime = pLocalPlayer->DistTo(pEnt) / projSpeed;
 
 	ImVec3 vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
 
 
-	if (pEnt->m_fFlags != 769)
+	if (!(pEnt->m_fFlags & 1))
 		vecOut.z -= 800.f * fTime * fTime / 2.f;
-	// vecOut.z += 800.f * fTime * fTime / 2.f;
+	vecOut.z += 40.f;
 	return vecOut;
 }
 
+
+
+using namespace Hacks;
+
+ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed)
+{
+
+
+
+	float flTargetSpeed = pEnt->m_vecVelocity.Length();
+
+	if (flTargetSpeed == 0.0f)
+		return pEnt->m_vecOrigin;
+
+	float flDelta = 0.00001f;
+
+	while (true)
+	{
+		ImVec3 vecPredPos = LinearPrediction(pEnt, flDelta);
+
+		float flProjTime = (SSDK::GetLocalPlayer()->m_vecOrigin + SSDK::GetLocalPlayer()->m_vecViewOffset).DistTo(vecPredPos) / projSpeed;
+
+		float flTimeFromPlayerToNewPos = pEnt->m_vecOrigin.DistTo(vecPredPos) / flTargetSpeed;
+		flDelta += 0.001f;
+
+		if (flProjTime - flTimeFromPlayerToNewPos <= 0.f)
+			return vecPredPos;
+
+	}
+}
 
 CAimBot::CAimBot(SSDK::CUserCmd* ppUsrCmd)
 {
@@ -34,8 +60,6 @@ void CAimBot::Work()
 	SSDK::CBaseEntity* pEnt = GetClosestTargetByFov();
 	if (pEnt)
 		AimPlain(pEnt);
-	if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-		m_pCUsrCmd->m_iTickCount = 16777216;
 }
 void CAimBot::AimPlain(const SSDK::CBaseEntity* pEnt)
 {
@@ -121,7 +145,7 @@ ImVec3 CAimBot::CalcAimViewAngles(const SSDK::CBaseEntity* pEntity)
 {
 	ImVec3 calculated;
 
-	ImVec3 targetPosition = Predict(pEntity, 1980.f);
+	ImVec3 targetPosition = Predict(pEntity, 1100.f);
 
 	auto pLocalPlayer = SSDK::GetLocalPlayer();
 	ImVec3 localCameraPosition = pLocalPlayer->m_vecOrigin + pLocalPlayer->m_vecViewOffset;

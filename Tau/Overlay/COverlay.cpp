@@ -86,7 +86,7 @@ void COverlay::Render()
 			continue;
 
 		auto pos = Esp::CBaseEsp::WorldToScreen(pEnt->m_vecOrigin);
-		auto pred_pos = Esp::CBaseEsp::WorldToScreen(Hacks::CAimBot::Predict(pEnt, 2000.f));
+		auto pred_pos = Esp::CBaseEsp::WorldToScreen(Hacks::CAimBot::Predict(pEnt, 1980.f));
 
 		if (pos.z <= 0.f)
 			continue;
