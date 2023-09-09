@@ -3,51 +3,62 @@
 #include "../../Utils/Math.h"
 #include "../../SSDK/IClientEntityList.h"
 
+using namespace Hacks;
 
 ImVec3 LinearPrediction(const SSDK::CBaseEntity* pEnt, float fTime)
 {
-
 	const auto pLocalPlayer = SSDK::GetLocalPlayer();
+	ImVec3 acceleration = { 0, 0, -800.f };  // Assuming only gravity acts on the entity in the z-direction
 
 	ImVec3 vecOut = pEnt->m_vecOrigin + (pEnt->m_vecVelocity * fTime);
 
-
 	if (!(pEnt->m_fFlags & 1))
-		vecOut.z -= 800.f * fTime * fTime / 2.f;
-	vecOut.z += 40.f;
+		vecOut += acceleration * 0.5f * fTime * fTime;
+
 	return vecOut;
 }
 
 
-
-using namespace Hacks;
-
-ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed)
-{
-
-
-
-	float flTargetSpeed = pEnt->m_vecVelocity.Length();
-
-	if (flTargetSpeed == 0.0f)
-		return pEnt->m_vecOrigin;
-
-	float flDelta = 0.00001f;
-
-	while (true)
-	{
-		ImVec3 vecPredPos = LinearPrediction(pEnt, flDelta);
-
-		float flProjTime = (SSDK::GetLocalPlayer()->m_vecOrigin + SSDK::GetLocalPlayer()->m_vecViewOffset).DistTo(vecPredPos) / projSpeed;
-
-		float flTimeFromPlayerToNewPos = pEnt->m_vecOrigin.DistTo(vecPredPos) / flTargetSpeed;
-		flDelta += 0.001f;
-
-		if (flProjTime - flTimeFromPlayerToNewPos <= 0.f)
-			return vecPredPos;
-
+bool solveQuadratic(float a, float b, float c, float& x1, float& x2) {
+	float discriminant = b * b - 4 * a * c;
+	if (discriminant < 0) {
+		return false;
 	}
+	x1 = (-b + std::sqrt(discriminant)) / (2 * a);
+	x2 = (-b - std::sqrt(discriminant)) / (2 * a);
+	return true;
 }
+
+ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed) {
+	ImVec3 myPos = SSDK::GetLocalPlayer()->m_vecOrigin + SSDK::GetLocalPlayer()->m_vecViewOffset;
+	ImVec3 targetPos = pEnt->m_vecOrigin;
+	ImVec3 targetVel = pEnt->m_vecVelocity;
+	ImVec3 relPos = targetPos - myPos;
+	ImVec3 relVel = targetVel;  // Assuming projectile speed is much higher than target speed
+
+	// Constants for the quadratic equation
+	float a = targetVel.LengthSqr() - projSpeed * projSpeed;
+	float b = 2 * relPos.Dot(relVel);
+	float c = relPos.LengthSqr();
+
+	float t1, t2;
+	if (!solveQuadratic(a, b, c, t1, t2)) {
+		// No real roots, no intersection
+		return targetPos;
+	}
+
+	// Choose the smallest positive time
+	float intersectTime = (t1 > 0) ? t1 : t2;
+	if (t1 > 0 && t2 > 0) {
+		intersectTime = min(t1, t2);
+	}
+
+	// Calculate the final predicted position
+	ImVec3 predictedPos = targetPos + targetVel * intersectTime + ImVec3(0, 0, 0.5f * -800.0f * intersectTime * intersectTime);
+
+	return predictedPos;
+}
+
 
 CAimBot::CAimBot(SSDK::CUserCmd* ppUsrCmd)
 {
@@ -145,7 +156,7 @@ ImVec3 CAimBot::CalcAimViewAngles(const SSDK::CBaseEntity* pEntity)
 {
 	ImVec3 calculated;
 
-	ImVec3 targetPosition = Predict(pEntity, 1100.f);
+	ImVec3 targetPosition = Predict(pEntity, 1980.f);
 
 	auto pLocalPlayer = SSDK::GetLocalPlayer();
 	ImVec3 localCameraPosition = pLocalPlayer->m_vecOrigin + pLocalPlayer->m_vecViewOffset;
