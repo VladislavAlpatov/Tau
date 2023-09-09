@@ -18,7 +18,9 @@ ImVec3 LinearPrediction(const SSDK::CBaseEntity* pEnt, float fTime)
 	return vecOut;
 }
 
+#include <cmath>
 
+// Function to solve the quadratic equation ax^2 + bx + c = 0
 bool solveQuadratic(float a, float b, float c, float& x1, float& x2) {
 	float discriminant = b * b - 4 * a * c;
 	if (discriminant < 0) {
@@ -30,16 +32,26 @@ bool solveQuadratic(float a, float b, float c, float& x1, float& x2) {
 }
 
 ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed) {
+	const float gravity = -800.0f;  // Acceleration due to gravity
+	bool isTargetInAir = !(pEnt->m_fFlags & 1);
 	ImVec3 myPos = SSDK::GetLocalPlayer()->m_vecOrigin + SSDK::GetLocalPlayer()->m_vecViewOffset;
-	ImVec3 targetPos = pEnt->m_vecOrigin;
+	ImVec3 targetPos = pEnt->m_vecOrigin + ImVec3(0,0,20);
 	ImVec3 targetVel = pEnt->m_vecVelocity;
-	ImVec3 relPos = targetPos - myPos;
-	ImVec3 relVel = targetVel;  // Assuming projectile speed is much higher than target speed
 
-	// Constants for the quadratic equation
+	// Relative position and velocity
+	ImVec3 relPos = targetPos - myPos;
+	ImVec3 relVel = targetVel;
+
+	// Constants for the quadratic equation to find the time 't'
 	float a = targetVel.LengthSqr() - projSpeed * projSpeed;
 	float b = 2 * relPos.Dot(relVel);
 	float c = relPos.LengthSqr();
+
+	// Adjust for gravity if the target is in the air
+	if (isTargetInAir) {
+		a += 0.25f * gravity * gravity;
+		b += gravity * relPos.z;
+	}
 
 	float t1, t2;
 	if (!solveQuadratic(a, b, c, t1, t2)) {
@@ -54,11 +66,15 @@ ImVec3 CAimBot::Predict(const SSDK::CBaseEntity* pEnt, float projSpeed) {
 	}
 
 	// Calculate the final predicted position
-	ImVec3 predictedPos = targetPos + targetVel * intersectTime + ImVec3(0, 0, 0.5f * -800.0f * intersectTime * intersectTime);
+	ImVec3 predictedPos = targetPos + targetVel * intersectTime;
+
+	// If the target is in the air, consider gravity
+	if (isTargetInAir) {
+		predictedPos += ImVec3(0, 0, 0.5f * gravity * intersectTime * intersectTime);
+	}
 
 	return predictedPos;
 }
-
 
 CAimBot::CAimBot(SSDK::CUserCmd* ppUsrCmd)
 {
@@ -156,7 +172,7 @@ ImVec3 CAimBot::CalcAimViewAngles(const SSDK::CBaseEntity* pEntity)
 {
 	ImVec3 calculated;
 
-	ImVec3 targetPosition = Predict(pEntity, 1980.f);
+	ImVec3 targetPosition = Predict(pEntity, 1100.f);
 
 	auto pLocalPlayer = SSDK::GetLocalPlayer();
 	ImVec3 localCameraPosition = pLocalPlayer->m_vecOrigin + pLocalPlayer->m_vecViewOffset;
